@@ -42,7 +42,7 @@ except ImportError:
 
 class UOVidCompilerGUI:
     # Version info for auto-updates
-    VERSION = "1.1.1"  # Update this when releasing new versions
+    VERSION = "1.1.2"  # Update this when releasing new versions
     GITHUB_REPO = "Real-NKnight/B-Magic-s-Auto-Vid-Compiler"  # GitHub repo for auto-updates
     
     # Donation addresses
@@ -1925,21 +1925,23 @@ To send a donation:
             # Get current executable path
             current_exe = sys.executable if getattr(sys, 'frozen', False) else __file__
             
-            # Create batch file to replace executable after exit
-            batch_path = os.path.join(tempfile.gettempdir(), "update_bmagic.bat")
-            with open(batch_path, 'w') as f:
-                f.write('@echo off\n')
-                f.write('timeout /t 2 /nobreak >nul\n')  # Wait for current process to close
-                f.write(f'move /Y "{temp_exe}" "{current_exe}"\n')
-                f.write(f'start "" "{current_exe}"\n')  # Restart application
-                f.write(f'del "%~f0"\n')  # Delete batch file
+            # Create PowerShell script to replace executable after exit
+            ps_script = f'''
+Start-Sleep -Seconds 2
+Move-Item -Force "{temp_exe}" "{current_exe}"
+Start-Process -FilePath "{current_exe}"
+'''
+            
+            ps_path = os.path.join(tempfile.gettempdir(), "update_bmagic.ps1")
+            with open(ps_path, 'w') as f:
+                f.write(ps_script)
             
             messagebox.showinfo("Update Ready", 
                               "Update will be installed when you close the application.\n"
                               "The program will restart automatically.")
             
-            # Set flag to run batch on close
-            self.update_batch_path = batch_path
+            # Set flag to run PowerShell script on close
+            self.update_script_path = ps_path
             
         except Exception as e:
             self.log_error(f"Update download failed: {e}")
@@ -1950,9 +1952,10 @@ To send a donation:
         self.stop_folder_monitoring()
         self.save_config()
         
-        # Run update batch if pending
-        if hasattr(self, 'update_batch_path') and os.path.exists(self.update_batch_path):
-            subprocess.Popen(self.update_batch_path, shell=True)
+        # Run update script if pending
+        if hasattr(self, 'update_script_path') and os.path.exists(self.update_script_path):
+            subprocess.Popen(['powershell', '-ExecutionPolicy', 'Bypass', '-File', self.update_script_path], 
+                           creationflags=subprocess.CREATE_NO_WINDOW)
         
         self.root.destroy()
     
