@@ -42,7 +42,7 @@ except ImportError:
 
 class UOVidCompilerGUI:
     # Version info for auto-updates
-    VERSION = "1.1.0"  # Update this when releasing new versions
+    VERSION = "1.1.1"  # Update this when releasing new versions
     GITHUB_REPO = "Real-NKnight/B-Magic-s-Auto-Vid-Compiler"  # GitHub repo for auto-updates
     
     # Donation addresses
@@ -420,9 +420,9 @@ class UOVidCompilerGUI:
         donation_frame = ttk.Frame(parent, style='Header.TFrame')
         donation_frame.pack(side='right', padx=(20, 0), pady=10)
         
-        # Header with gift icon
+        # Header with gift icon - centered over buttons
         header_frame = tk.Frame(donation_frame, bg=self.colors['bg'])
-        header_frame.pack(anchor='e', pady=(0, 8))
+        header_frame.pack(pady=(0, 8))
         
         if hasattr(self, 'icons') and 'gift' in self.icons:
             gift_label = tk.Label(header_frame, image=self.icons['gift'], 
@@ -435,7 +435,7 @@ class UOVidCompilerGUI:
         
         # Payment buttons frame
         buttons_frame = ttk.Frame(donation_frame, style='Header.TFrame')
-        buttons_frame.pack(anchor='e')
+        buttons_frame.pack()
         
         # Payment method configurations - now with logo support
         payment_methods = [
