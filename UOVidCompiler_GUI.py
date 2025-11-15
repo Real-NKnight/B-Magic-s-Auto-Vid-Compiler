@@ -42,7 +42,7 @@ except ImportError:
 
 class UOVidCompilerGUI:
     # Version info for auto-updates
-    VERSION = "1.1.2"  # Update this when releasing new versions
+    VERSION = "1.1.3"  # Update this when releasing new versions
     GITHUB_REPO = "Real-NKnight/B-Magic-s-Auto-Vid-Compiler"  # GitHub repo for auto-updates
     
     # Donation addresses
@@ -1913,35 +1913,54 @@ To send a donation:
         try:
             self.log_status("[UPDATE] Downloading update...")
             
-            # Download to temp file
-            temp_exe = os.path.join(tempfile.gettempdir(), "BMagic_AutoVidCompiler_Update.exe")
+            # Get current executable path
+            current_exe = sys.executable if getattr(sys, 'frozen', False) else __file__
+            
+            # Download next to current exe with .new extension
+            new_exe_path = current_exe.replace('.exe', '_NEW.exe')
             
             with urllib.request.urlopen(download_url, timeout=60) as response:
-                with open(temp_exe, 'wb') as out_file:
+                with open(new_exe_path, 'wb') as out_file:
                     shutil.copyfileobj(response, out_file)
             
             self.log_status("[OK] Update downloaded successfully!")
             
-            # Get current executable path
-            current_exe = sys.executable if getattr(sys, 'frozen', False) else __file__
-            
-            # Create PowerShell script to replace executable after exit
-            ps_script = f'''
-Start-Sleep -Seconds 2
-Move-Item -Force "{temp_exe}" "{current_exe}"
-Start-Process -FilePath "{current_exe}"
+            # Create batch file updater (works better than Python for .exe replacement)
+            batch_script = f'''@echo off
+REM Wait for app to fully close and release all file locks
+timeout /t 3 /nobreak >nul
+
+REM Try to delete old exe, retry if locked
+:retry_delete
+del /f /q "{current_exe}" 2>nul
+if exist "{current_exe}" (
+    timeout /t 1 /nobreak >nul
+    goto retry_delete
+)
+
+REM Move new version to replace old
+move /y "{new_exe_path}" "{current_exe}"
+
+REM Wait a moment before restarting to ensure file system is ready
+timeout /t 1 /nobreak >nul
+
+REM Start the updated version
+start "" "{current_exe}"
+
+REM Clean up this batch file
+del "%~f0"
 '''
             
-            ps_path = os.path.join(tempfile.gettempdir(), "update_bmagic.ps1")
-            with open(ps_path, 'w') as f:
-                f.write(ps_script)
+            batch_path = os.path.join(os.path.dirname(current_exe), "updater.bat")
+            with open(batch_path, 'w') as f:
+                f.write(batch_script)
             
             messagebox.showinfo("Update Ready", 
                               "Update will be installed when you close the application.\n"
                               "The program will restart automatically.")
             
-            # Set flag to run PowerShell script on close
-            self.update_script_path = ps_path
+            # Store batch path for execution on close
+            self.updater_batch_path = batch_path
             
         except Exception as e:
             self.log_error(f"Update download failed: {e}")
@@ -1952,12 +1971,19 @@ Start-Process -FilePath "{current_exe}"
         self.stop_folder_monitoring()
         self.save_config()
         
-        # Run update script if pending
-        if hasattr(self, 'update_script_path') and os.path.exists(self.update_script_path):
-            subprocess.Popen(['powershell', '-ExecutionPolicy', 'Bypass', '-File', self.update_script_path], 
-                           creationflags=subprocess.CREATE_NO_WINDOW)
+        # Run updater batch file if pending
+        if hasattr(self, 'updater_batch_path') and os.path.exists(self.updater_batch_path):
+            # Run batch file silently in background - completely detached from parent process
+            subprocess.Popen(['cmd.exe', '/c', self.updater_batch_path], 
+                           creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+                           close_fds=True,
+                           shell=False)
         
         self.root.destroy()
+        
+        # Ensure clean exit for PyInstaller apps
+        import sys
+        sys.exit(0)
     
     def run(self):
         """Start the GUI application"""
