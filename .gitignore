@@ -1,0 +1,21 @@
+# Build outputs and executables (too large for GitHub, only upload to Releases)
+*.exe
+*.pkg
+dist/
+build/
+__pycache__/
+*.pyc
+
+# Large FFmpeg binaries (bundle with releases, not in repo)
+ffmpeg/ffmpeg.exe
+ffmpeg/ffprobe.exe
+BMagic_AutoVidCompiler_STANDALONE_Distribution/ffmpeg/
+
+# User-generated files
+logs/
+*.log
+gui_config.json
+
+# OS files
+.DS_Store
+Thumbs.db
